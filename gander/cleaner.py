@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from gander import parser
-from gander.util import ReplaceSequence
 
 
 REGEX_REMOVE_NODES = (
@@ -26,10 +25,7 @@ GOOGLE_PATTERN = " google "
 ENTRIES_PATTERN = "^[^entry-]more.*$"
 FACEBOOK_PATTERN = "[^-]facebook"
 TWITTER_PATTERN = "[^-]twitter"
-TABS_AND_NEWLINES = ReplaceSequence()\
-    .create("\n", "\n\n")\
-    .append("\t")\
-    .append("^\\s+$")
+TABS_AND_NEWLINES = [("\n", "\n\n"), ("\t", ""), ("^\\s+$", "")]
 
 
 def clean(doc):
@@ -136,8 +132,10 @@ def get_replacement_nodes(doc, div):
         elif parser.is_text_node(kid):
             kid_text_node = kid
             kid_text = parser.get_text(kid)
-            replace_text = TABS_AND_NEWLINES.replace_all(kid_text)
-            if (len(replace_text)) > 1:
+            replace_text = kid_text
+            for p, w in TABS_AND_NEWLINES:
+                replace_text = replace_text.replace(p, w)
+            if len(replace_text) > 1:
                 prev_sib_node = parser.previous_sibling(kid_text_node)
                 while prev_sib_node is not None \
                     and parser.get_tag(prev_sib_node) == "a" \

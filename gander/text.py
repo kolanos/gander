@@ -3,8 +3,8 @@
 import re
 import string
 
-from .encoding import UnicodeDecodeError, smart_str, smart_unicode
-from .util import FileHelper
+from gander.encoding import smart_str, smart_unicode, UnicodeDecodeError
+from gander.util import load_resource_file
 
 TABSSPACE = re.compile(r'[\s\t]+')
 
@@ -67,7 +67,7 @@ class StopWords(object):
         # TODO replace 'x' with class
         # to generate dynamic path for file to load
         path = 'text/stopwords-%s.txt' % language
-        self.STOP_WORDS = set(FileHelper.load_resource_file(path).splitlines())
+        self.STOP_WORDS = set(load_resource_file(path).splitlines())
 
     def remove_punctuation(self, content):
         # code taken form

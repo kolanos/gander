@@ -6,25 +6,10 @@ import urlparse
 
 from gander import parser
 from gander.text import StopWords
-from gander.util import ReplaceSequence, StringReplacement, StringSplitter
-
-ARROWS_SPLITTER = StringSplitter("»")
-# A_REL_TAG_SELECTOR = "a[rel=tag], a[href*=/tag/]"
-A_REL_TAG_SELECTOR = "a[rel=tag]"
-COLON_SPLITTER = StringSplitter(":")
-DASH_SPLITTER = StringSplitter(" - ")
-ESCAPED_FRAGMENT_REPLACEMENT = StringReplacement(u"#!",
-                                                 u"?_escaped_fragment_=")
-MOTLEY_REPLACEMENT = StringReplacement("&#65533;", "")
-NO_STRINGS = set()
-PIPE_SPLITTER = StringSplitter("\\|")
-RE_LANG = r'^[A-Za-z]{2}$'
-SPACE_SPLITTER = StringSplitter(' ')
-TITLE_REPLACEMENTS = ReplaceSequence().create(u"&raquo;").append(u"»")
 
 
 def title(doc):
-    """Fetch the article title and analyze it."""
+    """Return the document's title."""
     title = ''
     title_elem = parser.get_elements_by_tag(doc, tag='title')
     # no title found
@@ -35,29 +20,29 @@ def title(doc):
     used_delimeter = False
     # split title with |
     if '|' in title_text:
-        title_text = _split_title(title_text, PIPE_SPLITTER)
+        title_text = _split_title(title_text, "\\|")
         used_delimeter = True
     # split title with -
     if not used_delimeter and '-' in title_text:
-        title_text = _split_title(title_text, DASH_SPLITTER)
+        title_text = _split_title(title_text, " - ")
         used_delimeter = True
     # split title with »
     if not used_delimeter and u'»' in title_text:
-        title_text = _split_title(title_text, ARROWS_SPLITTER)
+        title_text = _split_title(title_text, "»")
         used_delimeter = True
     # split title with :
     if not used_delimeter and ':' in title_text:
-        title_text = _split_title(title_text, COLON_SPLITTER)
+        title_text = _split_title(title_text, ":")
         used_delimeter = True
-    title = MOTLEY_REPLACEMENT.replace_all(title_text)
+    title = title_text.replace("&#65533;", "")
     return title
 
 
 def _split_title(title, splitter):
-    """Split the title to best part possible."""
+    """Split the title, keep largest piece."""
     larger_text_length = 0
     larger_text_index = 0
-    title_pieces = splitter.split(title)
+    title_pieces = title.split(splitter)
     # find the largest title piece
     for i in range(len(title_pieces)):
         current = title_pieces[i]
@@ -66,11 +51,11 @@ def _split_title(title, splitter):
             larger_text_index = i
     # replace content
     title = title_pieces[larger_text_index]
-    return TITLE_REPLACEMENTS.replace_all(title).strip()
+    return title.replace("&raquo;", u"»").strip()
 
 
 def meta_favicon(doc):
-    """Extract the favicon from a website."""
+    """Return the document's meta favicon."""
     kwargs = {'tag': 'link', 'attr': ' rel', 'value': 'icon'}
     meta = parser.get_elements_by_tag(doc, **kwargs)
     if meta:
@@ -92,7 +77,7 @@ def meta_lang(doc):
             attr = parser.get_attribute(meta[0], attr='content')
     if attr:
         value = attr[:2]
-        if re.search(RE_LANG, value):
+        if re.search('^[A-Za-z]{2}$', value):
             return value.lower()
     return None
 
@@ -109,30 +94,25 @@ def meta_content(doc, meta_name):
 
 
 def meta_description(doc):
-    """If the article has meta description set in the source, use that."""
+    """Return the documents meta description."""
     return meta_content(doc, "meta[name=description]")
 
 
 def meta_keywords(doc):
-    """If the article has meta keywords set in the source, use that."""
+    """Return document's meta keywords."""
     return meta_content(doc, "meta[name=keywords]")
 
 
 def canonical_link(doc):
-    """If the article has meta canonical link set in the url."""
+    """Return document's canonical link."""
     kwargs = {'tag': 'link', 'attr': 'rel', 'value': 'canonical'}
     meta = parser.get_elements_by_tag(doc, **kwargs)
     if meta is not None and len(meta) > 0:
         href = meta[0].attrib.get('href')
         if href:
             href = href.strip()
-            o = urlparse.urlparse(href)
-            if not o.hostname:
-                z = urlparse.urlparse(article.finalUrl)
-                domain = '%s://%s' % (z.scheme, z.hostname)
-                href = urlparse.urljoin(domain, href)
             return href
-    return article.finalUrl
+    return ''
 
 
 def domain(url):
@@ -141,12 +121,14 @@ def domain(url):
 
 
 def tags(node):
-    # node doesn't have chidren
+    """Return anchors with rel="tag" attribute."""
+    # Node doesn't have chidren
     if len(list(node)) == 0:
-        return NO_STRINGS
-    elements = node.cssselect(A_REL_TAG_SELECTOR)
+        return set()
+    # Alternate selector: "a[rel=tag], a[href*=/tag/]"
+    elements = node.cssselect("a[rel=tag]")
     if elements is None:
-        return NO_STRINGS
+        return set()
     tags = []
     for el in elements:
         tag = parser.get_text(el)
@@ -175,7 +157,7 @@ def calculate_best_node_based_on_clustering(doc):
     for node in nodes_with_text:
         boost_score = float(0)
         # boost
-        if is_ok_to_boost(node):
+        if ok_to_boost(node):
             if cnt >= 0:
                 boost_score = float((1.0 / starting_boost) * 50)
                 starting_boost += 1
@@ -193,7 +175,7 @@ def calculate_best_node_based_on_clustering(doc):
         upscore = int(word_stats.get_stop_word_count() + boost_score)
         # parent node
         parent_node = parser.get_parent(node)
-        update_get_score(parent_node, upscore)
+        update_score(parent_node, upscore)
         update_node_count(node.getparent(), 1)
         if node.getparent() not in parent_nodes:
             parent_nodes.add(node.getparent())
@@ -201,7 +183,7 @@ def calculate_best_node_based_on_clustering(doc):
         parent_parent_node = parser.get_parent(parent_node)
         if parent_parent_node is not None:
             update_node_count(parent_parent_node, 1)
-            update_get_score(parent_parent_node, upscore / 2)
+            update_score(parent_parent_node, upscore / 2)
             if parent_parent_node not in parent_nodes:
                 parent_nodes.add(parent_parent_node)
         cnt += 1
@@ -217,7 +199,7 @@ def calculate_best_node_based_on_clustering(doc):
     return top_node
 
 
-def is_ok_to_boost(node):
+def ok_to_boost(node):
     """\
     A lot of times the first paragraph might be the caption under an image
     so we'll want to make sure if we're going to boost a parent node that
@@ -250,25 +232,29 @@ def walk_siblings(node):
     while current_sibling is not None:
         b.append(current_sibling)
         previous_sibling = parser.previous_sibling(current_sibling)
-        current_sibling = previous_sibling if previous_sibling is not None else None
+        if previous_sibling is not None:
+            current_sibling = previous_sibling
+        else:
+            current_sibling = None
     return b
 
 
 def add_siblings(top_node):
-    baseline_score_for_sibling_paragraphs = siblings_baseline_get_score(top_node)
+    sibling_paragraphs_baseline_score = siblings_baseline_score(top_node)
     results = walk_siblings(top_node)
     for current_node in results:
-        ps = get_sibling_content(current_node, baseline_score_for_sibling_paragraphs)
+        ps = sibling_content(current_node, sibling_paragraphs_baseline_score)
         for p in ps:
             top_node.insert(0, p)
     return top_node
 
 
-def get_sibling_content(current_sibling, baseline_score_for_sibling_paragraphs):
+def sibling_content(current_sibling, sibling_paragraphs_baseline_score):
     """
     Adds any siblings that may have a decent score to this node
     """
-    if current_sibling.tag == 'p' and len(parser.get_text(current_sibling)) > 0:
+    if current_sibling.tag == 'p' \
+            and len(parser.get_text(current_sibling)) > 0:
         e0 = current_sibling
         if e0.tail:
             e0 = copy.deepcopy(e0)
@@ -287,14 +273,14 @@ def get_sibling_content(current_sibling, baseline_score_for_sibling_paragraphs):
                     paragraph_score = word_stats.get_stop_word_count()
                     sibling_baseline_score = float(.30)
                     high_link_density = is_high_link_density(first_paragraph)
-                    score = float(baseline_score_for_sibling_paragraphs * sibling_baseline_score)
+                    score = float(sibling_paragraphs_baseline_score * sibling_baseline_score)
                     if score < paragraph_score and not high_link_density:
                         p = parser.create_element(tag='p', text=text, tail=None)
                         ps.append(p)
             return ps
 
 
-def siblings_baseline_get_score(top_node):
+def siblings_baseline_score(top_node):
     """
     We could have long articles that have tons of paragraphs
     so if we tried to calculate the base score against
@@ -320,7 +306,7 @@ def siblings_baseline_get_score(top_node):
     return base
 
 
-def update_get_score(node, add_to_score):
+def update_score(node, add_to_score):
     """\
     Adds a score to the score Attribute we put on divs we'll get the current
     score then add the score we're passing in to the current.
@@ -406,7 +392,7 @@ def is_table_tag_and_no_paragraphs_exist(e):
     return False
 
 
-def is_node_score_threshold_met(node, e):
+def node_score_threshold_met(node, e):
     top_node_score = get_score(node)
     current_node_score = get_score(e)
     threshold_score = float(top_node_score * .08)
@@ -425,6 +411,6 @@ def cleanup(target_node):
         if e.tag != 'p':
             if is_high_link_density(e) \
                 or is_table_tag_and_no_paragraphs_exist(e) \
-                or not is_node_score_threshold_met(node, e):
+                or not node_score_threshold_met(node, e):
                 parser.remove(e)
     return node
