@@ -165,15 +165,13 @@ def is_text_node(node):
     return node.tag == 'text'
 
 
-def get_attribute(node, attr=None):
-    if attr:
-        return node.attrib.get(attr, None)
+def get_attribute(node, attr):
+    return node.attrib.get(attr, None)
     return attr
 
 
-def set_attribute(node, attr=None, value=None):
-    if attr and value:
-        node.set(attr, value)
+def set_attribute(node, attr, value):
+    node.set(attr, value)
 
 
 def outer_html(node):

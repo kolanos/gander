@@ -54,6 +54,15 @@ def _split_title(title, splitter):
     return title.replace("&raquo;", u"»").strip()
 
 
+def headings(doc):
+    headers = []
+    nodes = parser.get_elements_by_tags(doc, ['h1', 'h2', 'h3', 'h4', 'h5'])
+    for node in nodes:
+        if node.text and node.text.strip():
+            headers.append(node.text.strip())
+    return headers
+
+
 def meta_favicon(doc):
     """Return the document's meta favicon."""
     kwargs = {'tag': 'link', 'attr': ' rel', 'value': 'icon'}
