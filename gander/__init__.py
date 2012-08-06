@@ -1,0 +1,6 @@
+__title__ = 'gander'
+__author__ = 'Michael Lavers'
+__email__ = 'kolanos@gmail.com'
+__version__ = '0.0.1'
+__license__ = 'MIT'
+__copyright__ = 'Copyright 2012 Michael Lavers'

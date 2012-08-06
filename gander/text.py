@@ -70,8 +70,6 @@ class StopWords(object):
         self.STOP_WORDS = set(load_resource_file(path).splitlines())
 
     def remove_punctuation(self, content):
-        # code taken form
-        # http://stackoverflow.com/questions/265960/best-way-to-strip-punctuation-from-a-string-in-python
         if isinstance(content, unicode):
             content = content.encode('utf-8')
         table = string.maketrans("", "")
