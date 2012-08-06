@@ -1,5 +1,4 @@
 Gander
 ======
 
-Tools to extract content from HTML documents. Based on
-[https://github.com/jiminoc/goose](Goose).
+Tools to extract content from HTML documents. Based on [Goose](https://github.com/jiminoc/goose).

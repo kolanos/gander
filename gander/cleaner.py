@@ -110,6 +110,7 @@ def clean_span_in_p(doc):
         item.drop_tag()
     return doc
 
+
 def get_flushed_buffer(replacement_text, doc):
     return parser.text_to_p(replacement_text)
 
@@ -139,12 +140,12 @@ def get_replacement_nodes(doc, div):
                 prev_sib_node = parser.previous_sibling(kid_text_node)
                 while prev_sib_node is not None \
                     and parser.get_tag(prev_sib_node) == "a" \
-                    and parser.get_attribute(prev_sib_node, 'grv-usedalready') != 'yes':
+                    and parser.get_attribute(prev_sib_node, 'usedalready') != 'yes':
                     outer = " " + parser.outer_html(prev_sib_node) + " "
                     replacement_text.append(outer)
                     nodes_to_remove.append(prev_sib_node)
                     parser.set_attribute(prev_sib_node,
-                                         attr='grv-usedalready',
+                                         attr='usedalready',
                                          value='yes')
                     prev = parser.previous_sibling(prev_sib_node)
                     prev_sib_node = prev if prev is not None else None
@@ -154,12 +155,12 @@ def get_replacement_nodes(doc, div):
                 next_Sib_node = parser.next_sibling(kid_text_node)
                 while next_Sib_node is not None \
                     and parser.get_tag(next_Sib_node) == "a" \
-                    and parser.get_attribute(next_Sib_node, 'grv-usedalready') != 'yes':
+                    and parser.get_attribute(next_Sib_node, 'usedalready') != 'yes':
                     outer = " " + parser.outer_html(next_Sib_node) + " "
                     replacement_text.append(outer)
                     nodes_to_remove.append(next_Sib_node)
                     parser.set_attribute(next_Sib_node,
-                                         attr='grv-usedalready',
+                                         attr='usedalready',
                                          value='yes')
                     next = parser.next_sibling(next_Sib_node)
                     prev_sib_node = next if next is not None else None
